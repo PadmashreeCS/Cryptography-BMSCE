@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% set logged_in = logged_in %}
+
+{% block title %}AES-256 Secure Data Storage System — CRP Project{% endblock %}
+
+{% block content %}
+
+<!-- ===== HERO ===== -->
+<section class="hero">
+  <div class="hero-bg-grid"></div>
+  <div class="hero-content">
+    <div class="hero-badge">🎓 Final Year Academic Project — CRP</div>
+    <h1 class="hero-title">
+      AES-256<br/>
+      <span class="gradient-text">Secure Data Storage System</span>
+    </h1>
+    <p class="hero-sub">
+      A fully hand-coded web application demonstrating manual AES-256 block cipher encryption,
+      secure user authentication, and encrypted database storage — built from scratch
+      in Python without any external cryptography libraries.
+    </p>
+    <div class="hero-cta">
+      <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg" id="get-started-btn">
+        🚀 Get Started
+      </a>
+      <a href="{{ url_for('auth.signup') }}" class="btn btn-outline btn-lg">
+        ✏️ Sign Up
+      </a>
+    </div>
+  </div>
+  <div class="hero-visual">
+    <div class="cipher-box">
+      <div class="cipher-row">
+        <span class="cipher-label">Plaintext Block (16 Bytes)</span>
+        <span class="cipher-text plain-text" id="hero-plain">48656c6c6f2c204145532d323536210b</span>
+      </div>
+      <div class="cipher-arrow">↓ <span class="cipher-key-badge">AES-256 Key schedule</span> ↓</div>
+      <div class="cipher-row">
+        <span class="cipher-label">Ciphertext Block (16 Bytes)</span>
+        <span class="cipher-text cipher-animated" id="hero-cipher">8f9b32c0d8aa5a2b16df8d0a92e1045f</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PROJECT OVERVIEW CARDS ===== -->
+<section class="features-section">
+  <div class="section-header">
+    <h2>What This Project Demonstrates</h2>
+    <p>Three core pillars — all implemented manually in Python, no external crypto libraries</p>
+  </div>
+  <div class="features-grid overview-grid">
+
+    <div class="feature-card overview-card">
+      <div class="feature-icon">🔒</div>
+      <h3>AES-256 Engine</h3>
+      <p>
+        Manual block-by-block Advanced Encryption Standard (AES) with 14 rounds of transformation
+        (SubBytes, ShiftRows, MixColumns, AddRoundKey). Runs CBC mode with a fresh random IV
+        per encryption.
+      </p>
+    </div>
+
+    <div class="feature-card overview-card">
+      <div class="feature-icon">👤</div>
+      <h3>Secure Authentication</h3>
+      <p>
+        User registration and login with <strong>SHA-256 + random salt</strong> password hashing,
+        brute-force lockout after repeated failures, and
+        <strong>OTP-based 2-Factor Verification</strong> via email for every login attempt.
+      </p>
+    </div>
+
+    <div class="feature-card overview-card">
+      <div class="feature-icon">🗄️</div>
+      <h3>AES-256 Encrypted Storage</h3>
+      <p>
+        User notes are encrypted with <strong>AES-256 CBC</strong> before being persisted to an
+        <strong>SQLite database</strong>. Each note gets a fresh cryptographically random 256-bit key.
+        Plaintext never touches the disk — data is
+        decrypted only on authenticated read requests.
+      </p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ===== PROJECT ARCHITECTURE / WORKFLOW ===== -->
+<section class="how-section">
+  <div class="section-header">
+    <h2>Project Architecture &amp; Workflow</h2>
+    <p>End-to-end data flow — from user input to encrypted storage and back</p>
+  </div>
+
+  <div class="arch-diagram">
+
+    <!-- Row 1: Input → Auth → Encrypt -->
+    <div class="arch-row">
+      <div class="arch-node user-node">
+        <div class="arch-icon">👤</div>
+        <div class="arch-label">User Input</div>
+        <div class="arch-desc">Plaintext note &amp; credentials entered via web form</div>
+      </div>
+      <div class="arch-connector">
+        <div class="arch-arrow-line"></div>
+        <span class="arch-arrow-label">HTTPS POST</span>
+      </div>
+      <div class="arch-node auth-node">
+        <div class="arch-icon">🛡️</div>
+        <div class="arch-label">Authentication Layer</div>
+        <div class="arch-desc">SHA-256 + Salt · OTP 2FA · Brute-force lockout</div>
+      </div>
+      <div class="arch-connector">
+        <div class="arch-arrow-line"></div>
+        <span class="arch-arrow-label">Verified Session</span>
+      </div>
+      <div class="arch-node encrypt-node">
+        <div class="arch-icon">🔒</div>
+        <div class="arch-label">AES-256 Engine</div>
+        <div class="arch-desc">AES-256 CBC — 14 rounds, random IV — hand-coded in <code>aes256.py</code></div>
+      </div>
+    </div>
+
+    <!-- Row 2 connector -->
+    <div class="arch-vertical-connector">
+      <div class="arch-vert-line"></div>
+      <span class="arch-arrow-label">Ciphertext only</span>
+    </div>
+
+    <!-- Row 2: DB → Decrypt → User -->
+    <div class="arch-row arch-row-reverse">
+      <div class="arch-node user-node">
+        <div class="arch-icon">📄</div>
+        <div class="arch-label">Decrypted View</div>
+        <div class="arch-desc">Plaintext returned only to the authenticated session owner</div>
+      </div>
+      <div class="arch-connector">
+        <div class="arch-arrow-line"></div>
+        <span class="arch-arrow-label">Decrypted on Read</span>
+      </div>
+      <div class="arch-node decrypt-node">
+        <div class="arch-icon">🔓</div>
+        <div class="arch-label">Decrypt on Fetch</div>
+        <div class="arch-desc">AES-256 CBC decryption — IV extracted from stored ciphertext</div>
+      </div>
+      <div class="arch-connector">
+        <div class="arch-arrow-line"></div>
+        <span class="arch-arrow-label">SQL SELECT</span>
+      </div>
+      <div class="arch-node db-node">
+        <div class="arch-icon">🗄️</div>
+        <div class="arch-label">SQLite Database</div>
+        <div class="arch-desc">Only ciphertext persisted — plaintext never written to disk</div>
+      </div>
+    </div>
+
+  </div>
+
+</section>
+
+<!-- ===== GET STARTED CTA ===== -->
+<section class="cta-section">
+  <div class="cta-card">
+    <h2>Ready to explore?</h2>
+    <p>Sign up for a free account to save AES-256-encrypted notes, or explore
+       the interactive AES Demo and Internals visualization tools.</p>
+    <div class="cta-buttons">
+      <a href="{{ url_for('auth.signup') }}" class="btn btn-primary btn-lg">Create Account</a>
+      <a href="{{ url_for('auth.login') }}" class="btn btn-glass btn-lg">Login</a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

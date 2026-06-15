@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% set logged_in = false %}
+{% block title %}OTP Verification — CryptoApp{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-icon">📱</div>
+      <h1>OTP Verification</h1>
+      <p>A 6-digit code has been printed to the server console for <strong>{{ username }}</strong></p>
+    </div>
+
+    <div class="otp-info-box">
+      <div class="otp-info-icon">💻</div>
+      <div>
+        <strong>Check the Terminal</strong>
+        <p>Look at the console window where you ran <code>python app.py</code> — your OTP is printed there.</p>
+      </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('auth.otp') }}" class="auth-form">
+      <div class="form-group">
+        <label for="otp">Enter 6-Digit OTP</label>
+        <input type="text" id="otp" name="otp" required
+               maxlength="6" minlength="6" pattern="\d{6}"
+               placeholder="______"
+               class="otp-input"
+               autocomplete="one-time-code"
+               inputmode="numeric" />
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full">Verify OTP</button>
+    </form>
+
+    <form method="POST" action="{{ url_for('auth.resend_otp') }}" style="margin-top: 1rem;">
+      <button type="submit" class="btn btn-outline btn-full">Resend OTP</button>
+    </form>
+
+    <div class="auth-footer">
+      <p><a href="{{ url_for('auth.login') }}">← Back to Login</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}

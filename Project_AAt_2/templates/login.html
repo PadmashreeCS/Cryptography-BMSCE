@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% set logged_in = false %}
+{% block title %}Login — CryptoApp{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-icon">🔐</div>
+      <h1>Welcome Back</h1>
+      <p>Sign in to access your encrypted data vault</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('auth.login') }}" class="auth-form" id="login-form">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required
+               placeholder="Enter your username" autocomplete="username" />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="input-wrapper">
+          <input type="password" id="password" name="password" required
+                 placeholder="Enter your password" autocomplete="current-password" />
+          <button type="button" class="toggle-pw" onclick="togglePassword('password', this)">👁</button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+        Sign In
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      <p>Don't have an account? <a href="{{ url_for('auth.signup') }}">Sign up</a></p>
+    </div>
+
+    <div class="demo-creds">
+      <p class="demo-label">🎓 Demo Credentials</p>
+      <div class="demo-row">
+        <span><strong>Admin:</strong> admin / Admin@123!</span>
+        <button class="btn-tiny" onclick="fillCreds('admin','Admin@123!')">Fill</button>
+      </div>
+      <div class="demo-row">
+        <span><strong>Student:</strong> student / Student@123!</span>
+        <button class="btn-tiny" onclick="fillCreds('student','Student@123!')">Fill</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function fillCreds(u, p) {
+  document.getElementById('username').value = u;
+  document.getElementById('password').value = p;
+}
+</script>
+{% endblock %}

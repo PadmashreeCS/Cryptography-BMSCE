@@ -1,0 +1,708 @@
+{% extends "base.html" %}
+{% block title %}AES-256 Information & Internals Explorer — CryptoApp{% endblock %}
+
+{% block content %}
+<style>
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 4px;
+  }
+  .tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.75rem 1.25rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 6px 6px 0 0;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .tab-btn.active {
+    color: var(--accent-purple);
+    background: rgba(255, 255, 255, 0.06);
+    border-bottom: 2px solid var(--accent-purple);
+    margin-bottom: -6px;
+  }
+  .tab-panel {
+    display: none;
+  }
+  .tab-panel.active {
+    display: block;
+  }
+  .visualizer-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    margin-top: 1.5rem;
+  }
+  .visualizer-box {
+    flex: 1;
+    min-width: 280px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 1.5rem;
+  }
+  .visualizer-box h3 {
+    margin-top: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 0.5rem;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+  }
+  .aes-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 8px;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    width: 150px;
+    margin: 0 auto;
+  }
+  .aes-cell {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    text-align: center;
+    padding: 6px 0;
+    border-radius: 4px;
+    color: #00ffcc;
+    font-weight: 600;
+  }
+  .shift-arrow-desc {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    padding: 10px 0;
+    font-family: var(--font-mono);
+  }
+  .subbytes-byte-flow {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(45px, 1fr));
+    gap: 6px;
+    margin-top: 1rem;
+  }
+  .subbytes-pair {
+    background: rgba(0,0,0,0.15);
+    border: 1px solid rgba(255,255,255,0.05);
+    padding: 6px;
+    border-radius: 6px;
+    text-align: center;
+    font-family: var(--font-mono);
+  }
+  .subbytes-before {
+    color: #ffaa00;
+    font-size: 0.85rem;
+    border-bottom: 1px dashed rgba(255,255,255,0.1);
+    padding-bottom: 2px;
+  }
+  .subbytes-after {
+    color: #00ffcc;
+    font-size: 0.85rem;
+    font-weight: bold;
+    padding-top: 2px;
+  }
+  .keysched-round {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    background: rgba(255,255,255,0.01);
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.03);
+  }
+  .keysched-label {
+    min-width: 100px;
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+  .key-gen-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    margin-left: 8px;
+    transition: all 0.2s ease;
+  }
+  .key-gen-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  .info-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    line-height: 1.6;
+  }
+  .info-card h3 {
+    margin-top: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--accent-purple);
+  }
+  .info-card p {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+  }
+  .spec-highlight {
+    font-family: var(--font-mono);
+    background: rgba(139, 92, 246, 0.12);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    color: var(--accent-purple);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+  }
+</style>
+
+<div class="page-container">
+  <div class="page-header">
+    <h1>🔬 AES-256 Information &amp; Internals Explorer</h1>
+    <p class="page-sub">Explore the specifications, round transformations, operational modes, and mathematical details of the Advanced Encryption Standard.</p>
+  </div>
+
+  <!-- TABS NAV -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('overview', this)">📘 Overview</button>
+    <button class="tab-btn" onclick="switchTab('keyschedule', this)">🔑 Key Expansion</button>
+    <button class="tab-btn" onclick="switchTab('subbytes', this)">🔄 SubBytes</button>
+    <button class="tab-btn" onclick="switchTab('shiftrows', this)">➡️ ShiftRows</button>
+    <button class="tab-btn" onclick="switchTab('mixcolumns', this)">🌀 MixColumns</button>
+    <button class="tab-btn" onclick="switchTab('addroundkey', this)">⊕ AddRoundKey</button>
+    <button class="tab-btn" onclick="switchTab('cbc', this)">🔗 CBC Mode</button>
+    <button class="tab-btn" onclick="switchTab('security', this)">🛡️ Security Benefits</button>
+  </div>
+
+  <!-- ==================== TAB 1: OVERVIEW ==================== -->
+  <div class="tab-panel active" id="panel-overview">
+    <div class="panel">
+      <h2>📘 AES-256 Overview</h2>
+      <p class="panel-sub">
+        The Advanced Encryption Standard (AES) is a symmetric block cipher established by the National Institute of Standards and Technology (NIST) in 2001. 
+        It was chosen through a worldwide competition to replace the aging Data Encryption Standard (DES). The algorithm was designed by Belgian cryptographers Joan Daemen and Vincent Rijmen (originally named Rijndael).
+      </p>
+      
+      <div class="info-grid">
+        <div class="info-card">
+          <h3>Symmetric Architecture</h3>
+          <p>AES is a symmetric-key algorithm, meaning the <strong>same key</strong> is used for both encryption and decryption. This requires secure key distribution systems to establish shared secrets beforehand.</p>
+        </div>
+        <div class="info-card">
+          <h3>Block Size (128-bits)</h3>
+          <p>Unlike stream ciphers, AES processes data in fixed-sized chunks of <span class="spec-highlight">128 bits (16 bytes)</span>. Plaintext is mapped into a 4×4 state matrix of bytes for byte-oriented transformations.</p>
+        </div>
+        <div class="info-card">
+          <h3>AES-256 Bit Strength</h3>
+          <p>This implementation utilizes a <span class="spec-highlight">256-bit (32-byte) key</span>, which represents the strongest tier of AES. It operates on a cycle of <span class="spec-highlight">14 rounds</span> of structural permutations and substitutions.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 2: KEY SCHEDULE ==================== -->
+  <div class="tab-panel" id="panel-keyschedule">
+    <div class="panel">
+      <h2>🔑 AES-256 Key Expansion</h2>
+      <p class="panel-sub">
+        AES-256 expands a single 256-bit (32-byte) user key into 15 independent 128-bit round keys (a total of 1920 bits) to be consumed block-by-block. 
+        The Key Schedule runs complex routines including cyclic byte rotations (RotWord), S-Box substitutions (SubWord), and XOR logic with round constants (Rcon).
+      </p>
+
+      <div class="form-group">
+        <label for="keysched-key" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>Symmetric Key (64 Hex Characters)</span>
+          <button type="button" class="key-gen-btn" onclick="generateKey('keysched-key')">🔑 Gen Key</button>
+        </label>
+        <div style="display:flex; gap:10px;">
+          <input type="text" id="keysched-key" style="font-family:var(--font-mono); font-size:0.85rem; letter-spacing:0.05em;" value="00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff" />
+          <button class="btn btn-primary" onclick="runKeySchedule()">Expand Key</button>
+        </div>
+      </div>
+
+      <div class="visualizer-container" id="keysched-result" style="display:none; flex-direction:column;">
+        <div class="visualizer-box">
+          <h3>Generated Round Keys (First 5 of 15)</h3>
+          <div id="keysched-rounds-container"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 3: SUBBYTES ==================== -->
+  <div class="tab-panel" id="panel-subbytes">
+    <div class="panel">
+      <h2>🔄 SubBytes Transformation (S-Box)</h2>
+      <p class="panel-sub">
+        SubBytes is a non-linear byte substitution step where each byte in the state matrix is replaced with another byte from a fixed lookup table (the S-Box). 
+        The S-Box is mathematically constructed using multiplicative inverses in GF(2⁸) followed by an affine transformation to prevent simple algebraic attacks.
+      </p>
+
+      <div class="form-group">
+        <label for="subbytes-state">16-Byte State (32 Hex Characters)</label>
+        <div style="display:flex; gap:10px;">
+          <input type="text" id="subbytes-state" style="font-family:var(--font-mono); letter-spacing:0.05em;" value="00112233445566778899aabbccddeeff" />
+          <button class="btn btn-primary" onclick="runSubBytes()">Trace SubBytes</button>
+        </div>
+      </div>
+
+      <div class="visualizer-container" id="subbytes-result" style="display:none;">
+        <div class="visualizer-box">
+          <h3>State Matrices</h3>
+          <div style="display:flex; justify-content:center; align-items:center; gap:2rem;">
+            <div>
+              <div class="aes-matrix-title">Before SubBytes</div>
+              <div id="subbytes-matrix-before"></div>
+            </div>
+            <div style="font-size:1.5rem; color:var(--text-secondary);">→</div>
+            <div>
+              <div class="aes-matrix-title">After SubBytes</div>
+              <div id="subbytes-matrix-after"></div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="visualizer-box" style="flex:2;">
+          <h3>Byte-by-Byte Substitution Map</h3>
+          <div class="subbytes-byte-flow" id="subbytes-flow-map"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 4: SHIFTROWS ==================== -->
+  <div class="tab-panel" id="panel-shiftrows">
+    <div class="panel">
+      <h2>➡️ ShiftRows Transformation</h2>
+      <p class="panel-sub">
+        ShiftRows cyclically shifts the bytes in each row of the state matrix by a progressive offset. 
+        Row 0 remains unchanged. Row 1 is shifted left by 1 byte. Row 2 is shifted left by 2 bytes. Row 3 is shifted left by 3 bytes. This provides vertical diffusion.
+      </p>
+
+      <div class="form-group">
+        <label for="shiftrows-state">16-Byte State (32 Hex Characters)</label>
+        <div style="display:flex; gap:10px;">
+          <input type="text" id="shiftrows-state" style="font-family:var(--font-mono); letter-spacing:0.05em;" value="00112233445566778899aabbccddeeff" />
+          <button class="btn btn-primary" onclick="runShiftRows()">Trace ShiftRows</button>
+        </div>
+      </div>
+
+      <div class="visualizer-container" id="shiftrows-result" style="display:none;">
+        <div class="visualizer-box">
+          <h3>Visual Shift Map</h3>
+          <div style="display:flex; justify-content:center; align-items:stretch; gap:1rem;">
+            <div>
+              <div class="aes-matrix-title">Before Shift</div>
+              <div id="shiftrows-matrix-before"></div>
+            </div>
+            <div class="shift-arrow-desc">
+              <div>Row 0 (No Shift) ➔</div>
+              <div>Row 1 (Shift Left 1) ➔</div>
+              <div>Row 2 (Shift Left 2) ➔</div>
+              <div>Row 3 (Shift Left 3) ➔</div>
+            </div>
+            <div>
+              <div class="aes-matrix-title">After Shift</div>
+              <div id="shiftrows-matrix-after"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 5: MIXCOLUMNS ==================== -->
+  <div class="tab-panel" id="panel-mixcolumns">
+    <div class="panel">
+      <h2>🌀 MixColumns Transformation</h2>
+      <p class="panel-sub">
+        MixColumns treats each column of the state matrix as a polynomial over Galois Field GF(2⁸) and multiplies it by a fixed polynomial modulo x⁴ + 1. 
+        This step acts as a linear transformation, mixing the columns to distribute changes across the state (horizontal diffusion).
+      </p>
+
+      <div class="form-group">
+        <label for="mixcolumns-state">16-Byte State (32 Hex Characters)</label>
+        <div style="display:flex; gap:10px;">
+          <input type="text" id="mixcolumns-state" style="font-family:var(--font-mono); letter-spacing:0.05em;" value="00112233445566778899aabbccddeeff" />
+          <button class="btn btn-primary" onclick="runMixColumns()">Trace MixColumns</button>
+        </div>
+      </div>
+
+      <div class="visualizer-container" id="mixcolumns-result" style="display:none;">
+        <div class="visualizer-box">
+          <h3>State Transformation</h3>
+          <div style="display:flex; justify-content:center; align-items:center; gap:2rem;">
+            <div>
+              <div class="aes-matrix-title">Before Mix</div>
+              <div id="mixcolumns-matrix-before"></div>
+            </div>
+            <div style="font-size:1.5rem; color:var(--text-secondary);">⊗ Matrix</div>
+            <div>
+              <div class="aes-matrix-title">After MixColumns</div>
+              <div id="mixcolumns-matrix-after"></div>
+            </div>
+          </div>
+          <p class="aes-step-desc" style="text-align:center; margin-top:1rem;">
+            Each column is multiplied by the MDS matrix: 
+            <code>[2 3 1 1; 1 2 3 1; 1 1 2 3; 3 1 1 2]</code> in GF(2⁸).
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 6: ADDROUNDKEY ==================== -->
+  <div class="tab-panel" id="panel-addroundkey">
+    <div class="panel">
+      <h2>⊕ AddRoundKey</h2>
+      <p class="panel-sub">
+        AddRoundKey is a simple bitwise XOR (eXclusive OR) operation where each byte of the state matrix is combined with the corresponding byte of the subkey derived from the key schedule. 
+        This is the step that mathematically links the plaintext data to the secret key.
+      </p>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="ark-state">16-Byte State (32 Hex Characters)</label>
+          <input type="text" id="ark-state" style="font-family:var(--font-mono); letter-spacing:0.05em;" value="00112233445566778899aabbccddeeff" />
+        </div>
+        <div class="form-group">
+          <label for="ark-key">Round Key (32 Hex Characters)</label>
+          <input type="text" id="ark-key" style="font-family:var(--font-mono); letter-spacing:0.05em;" value="fedcba9876543210fedcba9876543210" />
+        </div>
+      </div>
+      <div style="text-align:center; margin-top:1rem;">
+        <button class="btn btn-primary" onclick="runAddRoundKey()">Trace AddRoundKey</button>
+      </div>
+
+      <div class="visualizer-container" id="ark-result" style="display:none;">
+        <div class="visualizer-box">
+          <h3>Interactive XOR Result</h3>
+          <div style="display:flex; justify-content:center; align-items:center; gap:1.5rem; flex-wrap:wrap;">
+            <div>
+              <div class="aes-matrix-title">Input State</div>
+              <div id="ark-matrix-state"></div>
+            </div>
+            <div style="font-size:1.5rem; color:var(--text-secondary);">⊕</div>
+            <div>
+              <div class="aes-matrix-title">Round Key</div>
+              <div id="ark-matrix-key"></div>
+            </div>
+            <div style="font-size:1.5rem; color:var(--text-secondary);">=</div>
+            <div>
+              <div class="aes-matrix-title">Output State</div>
+              <div id="ark-matrix-output"></div>
+            </div>
+          </div>
+          <p class="aes-step-desc" style="text-align:center; margin-top:1rem;">
+            Calculated as: <code>Output = State ⊕ Key</code>. Each cell is XOR-ed independently.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 7: CBC MODE ==================== -->
+  <div class="tab-panel" id="panel-cbc">
+    <div class="panel">
+      <h2>🔗 Cipher Block Chaining (CBC) Mode</h2>
+      <p class="panel-sub">
+        Electronic Codebook (ECB) mode encrypts identical plaintext blocks to identical ciphertext blocks, revealing structural patterns. 
+        To prevent this, our system implements <strong>Cipher Block Chaining (CBC)</strong> mode.
+      </p>
+
+      <div class="info-grid" style="margin-top:1.5rem;">
+        <div class="info-card" style="flex:2;">
+          <h3>Encryption Equation</h3>
+          <p>Before encryption, each plaintext block is XOR-ed with the ciphertext of the preceding block. For the first block, a random <strong>Initialization Vector (IV)</strong> is used:</p>
+          <code style="display:block; margin:0.8rem 0; padding:0.6rem; background:rgba(0,0,0,0.3); font-family:var(--font-mono); color:var(--accent-cyan); text-align:center;">C<sub>i</sub> = E<sub>K</sub>(P<sub>i</sub> ⊕ C<sub>i-1</sub>) , with C<sub>0</sub> = IV</code>
+        </div>
+        <div class="info-card" style="flex:2;">
+          <h3>Decryption Equation</h3>
+          <p>Decryption extracts the IV from the header, runs the blocks in reverse, and XORs the decrypted block output with the previous ciphertext block to restore the original plaintext:</p>
+          <code style="display:block; margin:0.8rem 0; padding:0.6rem; background:rgba(0,0,0,0.3); font-family:var(--font-mono); color:var(--accent-cyan); text-align:center;">P<sub>i</sub> = D<sub>K</sub>(C<sub>i</sub>) ⊕ C<sub>i-1</sub> , with C<sub>0</sub> = IV</code>
+        </div>
+        <div class="info-card" style="flex:1 1 100%;">
+          <h3>Why Use an IV?</h3>
+          <p>The IV is a public, non-secret 16-byte random block prepended to the ciphertext. It guarantees that encrypting the same text twice with the same key produces entirely different ciphertexts, preventing pattern leak attacks.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 8: SECURITY BENEFITS ==================== -->
+  <div class="tab-panel" id="panel-security">
+    <div class="panel">
+      <h2>🛡️ Security Benefits of AES-256</h2>
+      <p class="panel-sub">
+        AES-256 is globally recognized as one of the most secure encryption algorithms. It is approved by the NSA for encrypting Top Secret classification data.
+      </p>
+
+      <div class="info-grid">
+        <div class="info-card">
+          <h3>Unbreakable Key Size</h3>
+          <p>
+            AES-256 utilizes a key length of 256 bits, yielding <span class="spec-highlight">2<sup>256</sup></span> combinations. 
+            This equals roughly <strong>1.1 × 10<sup>77</sup></strong> possibilities—larger than the number of atoms in the observable universe.
+          </p>
+        </div>
+        <div class="info-card">
+          <h3>Brute-Force Immunity</h3>
+          <p>
+            Brute-forcing an AES-256 key is mathematically impossible using classical computing. 
+            Even running the fastest supercomputers for trillions of years would fail to exhaust a significant portion of the keyspace.
+          </p>
+        </div>
+        <div class="info-card">
+          <h3>Mathematical Rigor</h3>
+          <p>
+            AES has survived decades of intense public cryptographic analysis. 
+            There are zero known practical algebraic, linear, or differential cryptanalytic attacks that compromise full-round AES-256.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function switchTab(tabId, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  
+  btn.classList.add('active');
+  document.getElementById('panel-' + tabId).classList.add('active');
+}
+
+function generateKey(id) {
+  const bytes = new Uint8Array(32);
+  window.crypto.getRandomValues(bytes);
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  document.getElementById(id).value = hex;
+}
+
+function renderMatrix(grid) {
+  if (!grid) return '';
+  let html = `<div class="aes-grid">`;
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 4; c++) {
+      html += `<div class="aes-cell">${grid[r][c]}</div>`;
+    }
+  }
+  html += `</div>`;
+  return html;
+}
+
+function parseStateToMatrix(stateHex) {
+  const clean = stateHex.replace(/ /g, '');
+  const bytes = [];
+  for (let i = 0; i < 32; i += 2) {
+    bytes.push(clean.substr(i, 2));
+  }
+  const grid = [[],[],[],[]];
+  for (let i = 0; i < 16; i++) {
+    const r = i % 4;
+    const c = Math.floor(i / 4);
+    grid[r][c] = bytes[i];
+  }
+  return grid;
+}
+
+async function runSubBytes() {
+  const state = document.getElementById('subbytes-state').value.trim().replace(/ /g, '');
+  if (state.length !== 32) {
+    alert('Please enter exactly 32 hex characters.');
+    return;
+  }
+  
+  const res = await fetch('/api/aes/trace/subbytes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ state })
+  });
+  const data = await res.json();
+  
+  if (data.error) {
+    alert(data.error);
+    return;
+  }
+  
+  document.getElementById('subbytes-result').style.display = 'flex';
+  
+  // Re-shape flat before/after lists into 4x4 matrices for grid rendering
+  const beforeGrid = [[],[],[],[]];
+  const afterGrid = [[],[],[],[]];
+  for (let i = 0; i < 16; i++) {
+    const r = i % 4;
+    const c = Math.floor(i / 4);
+    beforeGrid[r][c] = data.before[i];
+    afterGrid[r][c] = data.after[i];
+  }
+  
+  document.getElementById('subbytes-matrix-before').innerHTML = renderMatrix(beforeGrid);
+  document.getElementById('subbytes-matrix-after').innerHTML = renderMatrix(afterGrid);
+  
+  const flowMap = document.getElementById('subbytes-flow-map');
+  flowMap.innerHTML = '';
+  for (let i = 0; i < 16; i++) {
+    const pair = document.createElement('div');
+    pair.className = 'subbytes-pair';
+    pair.innerHTML = `
+      <div class="subbytes-before">${data.before[i]}</div>
+      <div class="subbytes-after">${data.after[i]}</div>
+    `;
+    flowMap.appendChild(pair);
+  }
+}
+
+async function runShiftRows() {
+  const state = document.getElementById('shiftrows-state').value.trim().replace(/ /g, '');
+  if (state.length !== 32) {
+    alert('Please enter exactly 32 hex characters.');
+    return;
+  }
+  
+  const res = await fetch('/api/aes/trace/shiftrows', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ state })
+  });
+  const data = await res.json();
+  
+  if (data.error) {
+    alert(data.error);
+    return;
+  }
+  
+  document.getElementById('shiftrows-result').style.display = 'flex';
+  document.getElementById('shiftrows-matrix-before').innerHTML = renderMatrix(data.before);
+  document.getElementById('shiftrows-matrix-after').innerHTML = renderMatrix(data.after);
+}
+
+async function runMixColumns() {
+  const state = document.getElementById('mixcolumns-state').value.trim().replace(/ /g, '');
+  if (state.length !== 32) {
+    alert('Please enter exactly 32 hex characters.');
+    return;
+  }
+  
+  const res = await fetch('/api/aes/trace/mixcolumns', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ state })
+  });
+  const data = await res.json();
+  
+  if (data.error) {
+    alert(data.error);
+    return;
+  }
+  
+  document.getElementById('mixcolumns-result').style.display = 'flex';
+  document.getElementById('mixcolumns-matrix-before').innerHTML = renderMatrix(data.before);
+  document.getElementById('mixcolumns-matrix-after').innerHTML = renderMatrix(data.after);
+}
+
+async function runKeySchedule() {
+  const key = document.getElementById('keysched-key').value.trim().replace(/ /g, '');
+  if (key.length !== 64) {
+    alert('Please enter exactly a 64 hex character key.');
+    return;
+  }
+  
+  const res = await fetch('/api/aes/trace/keyschedule', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key })
+  });
+  const data = await res.json();
+  
+  if (data.error) {
+    alert(data.error);
+    return;
+  }
+  
+  document.getElementById('keysched-result').style.display = 'flex';
+  const container = document.getElementById('keysched-rounds-container');
+  container.innerHTML = '';
+  
+  data.round_keys.forEach(rk => {
+    const div = document.createElement('div');
+    div.className = 'keysched-round';
+    div.innerHTML = `
+      <div class="keysched-label">Round Key ${rk.round}</div>
+      ${renderMatrix(rk.key)}
+    `;
+    container.appendChild(div);
+  });
+}
+
+function runAddRoundKey() {
+  const stateHex = document.getElementById('ark-state').value.trim().replace(/ /g, '');
+  const keyHex = document.getElementById('ark-key').value.trim().replace(/ /g, '');
+  
+  if (stateHex.length !== 32 || keyHex.length !== 32) {
+    alert('Both state and round key must be exactly 32 hex characters.');
+    return;
+  }
+  
+  const stateBytes = [];
+  const keyBytes = [];
+  const outBytes = [];
+  
+  for (let i = 0; i < 32; i += 2) {
+    stateBytes.push(parseInt(stateHex.substr(i, 2), 16));
+    keyBytes.push(parseInt(keyHex.substr(i, 2), 16));
+  }
+  
+  for (let i = 0; i < 16; i++) {
+    outBytes.push((stateBytes[i] ^ keyBytes[i]).toString(16).padStart(2, '0'));
+  }
+  
+  const stateGrid = [[],[],[],[]];
+  const keyGrid = [[],[],[],[]];
+  const outGrid = [[],[],[],[]];
+  
+  for (let i = 0; i < 16; i++) {
+    const r = i % 4;
+    const c = Math.floor(i / 4);
+    stateGrid[r][c] = stateBytes[i].toString(16).padStart(2, '0');
+    keyGrid[r][c] = keyBytes[i].toString(16).padStart(2, '0');
+    outGrid[r][c] = outBytes[i];
+  }
+  
+  document.getElementById('ark-result').style.display = 'flex';
+  document.getElementById('ark-matrix-state').innerHTML = renderMatrix(stateGrid);
+  document.getElementById('ark-matrix-key').innerHTML = renderMatrix(keyGrid);
+  document.getElementById('ark-matrix-output').innerHTML = renderMatrix(outGrid);
+}
+</script>
+{% endblock %}

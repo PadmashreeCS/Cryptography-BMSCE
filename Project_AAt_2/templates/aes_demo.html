@@ -1,0 +1,608 @@
+{% extends "base.html" %}
+{% block title %}AES-256 CBC Round-Trip Demo — Interactive Cryptography{% endblock %}
+
+{% block content %}
+<style>
+  .aes-flow-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin: 2rem 0;
+  }
+  .flow-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 1.8rem;
+    position: relative;
+    backdrop-filter: blur(8px);
+    transition: all 0.3s ease;
+  }
+  .flow-card:hover {
+    border-color: var(--accent-purple);
+  }
+  .flow-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .flow-badge {
+    background: var(--accent-purple);
+    color: white;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .flow-badge.encrypt-badge {
+    background: #ec4899; /* Pink */
+  }
+  .flow-badge.decrypt-badge {
+    background: #10b981; /* Green */
+  }
+  .flow-badge.key-badge {
+    background: #f59e0b; /* Orange */
+  }
+  .flow-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .flow-content {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 1.2rem;
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    word-break: break-all;
+  }
+  .flow-arrow {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 2rem;
+    margin: -0.5rem 0;
+    animation: bounce-y 2s infinite ease-in-out;
+  }
+  @keyframes bounce-y {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(6px); }
+  }
+  .success-banner {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #34d399;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .key-gen-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    margin-left: 8px;
+    transition: all 0.2s ease;
+  }
+  .key-gen-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  /* Matrix Trace Details */
+  .aes-matrix-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    justify-content: center;
+    margin: 1rem 0;
+  }
+  .aes-matrix-wrapper {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 0.75rem;
+    text-align: center;
+    min-width: 160px;
+  }
+  .aes-matrix-title {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .aes-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    width: 130px;
+    margin: 0 auto;
+  }
+  .aes-cell {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    text-align: center;
+    padding: 4px 0;
+    border-radius: 4px;
+    color: #00ffcc;
+    font-weight: 600;
+  }
+  .aes-cell.key-cell {
+    color: #ff9900;
+  }
+  .round-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .round-card-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .round-badge {
+    background: var(--accent-purple);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .arrow-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+  }
+  .aes-step-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    line-height: 1.4;
+  }
+  .btn-copy-sm {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    margin-top: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+  }
+  .btn-copy-sm:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+  .split-block {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-top: 0.75rem;
+  }
+  .split-item {
+    flex: 1;
+    min-width: 200px;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    padding: 0.8rem 1rem;
+  }
+  .split-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.3rem;
+  }
+  .split-val {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+  }
+</style>
+
+<div class="page-container">
+  <div class="page-header">
+    <h1>⚡ AES-256 CBC — Live Round-Trip Demo</h1>
+    <p class="page-sub">Trace the full symmetric lifecycle of data: from plaintext, key-generation, encryption, to ciphertext, decryption, and recovered plaintext.</p>
+  </div>
+
+  <!-- INPUT FORM -->
+  <div class="panel">
+    <form id="aes-demo-form" onsubmit="runAesDemo(event)" class="demo-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="text">Plaintext Input</label>
+          <textarea id="text" name="text" rows="3" required placeholder="Type the plaintext message here…">Hello, AES-256! This is a manual round-trip demonstration.</textarea>
+        </div>
+        <div class="form-group">
+          <label for="key" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>AES-256 Key (64 hex chars)</span>
+            <button type="button" class="key-gen-btn" onclick="generateKey()">🔑 Gen Key</button>
+          </label>
+          <input type="text" id="key" name="key" required
+                 placeholder="e.g. 64 hex characters"
+                 style="font-family:var(--font-mono); font-size:0.85rem; letter-spacing:0.05em;"
+                 value="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" />
+          <span class="form-hint">Must be exactly a 256-bit key represented as a 64-character hex string.</span>
+        </div>
+      </div>
+      <div style="text-align:center; margin-top:1.5rem;">
+        <button type="submit" class="btn btn-primary btn-lg">⚡ Run AES Demonstration</button>
+        <button type="button" class="btn btn-outline btn-lg" onclick="loadExample()">Load Example</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- AES FLOW ROUND-TRIP RESULT -->
+  <div class="panel" id="flow-panel" style="display:none;">
+    <h2>🔄 AES-256 Symmetric Round-Trip Flow</h2>
+    <p class="panel-sub">Observe how the data is transformed through encryption and reconstructed cleanly during decryption.</p>
+    
+    <div class="aes-flow-container">
+      
+      <!-- 1. PLAINTEXT -->
+      <div class="flow-card">
+        <div class="flow-header">
+          <span class="flow-badge">Plaintext</span>
+          <span class="flow-title">1. Original Plaintext Input</span>
+        </div>
+        <div class="flow-content" id="flow-plain-val" style="color:var(--accent-cyan);">—</div>
+      </div>
+
+      <div class="flow-arrow">↓</div>
+
+      <!-- 2. AES KEY -->
+      <div class="flow-card">
+        <div class="flow-header">
+          <span class="flow-badge key-badge">AES Key</span>
+          <span class="flow-title">2. Symmetric Cryptographic Key</span>
+        </div>
+        <div class="flow-content" id="flow-key-val" style="color:var(--accent-yellow);">—</div>
+      </div>
+
+      <div class="flow-arrow">↓</div>
+
+      <!-- 3. ENCRYPTION PROCESS -->
+      <div class="flow-card" style="border-style:dashed;">
+        <div class="flow-header">
+          <span class="flow-badge encrypt-badge">Encryption</span>
+          <span class="flow-title">3. AES-256 CBC Encryption Process</span>
+        </div>
+        <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:0.5rem; line-height:1.5;">
+          The plain text is padded to 16-byte blocks (using PKCS#7 padding). A cryptographically secure random Initialization Vector (IV) is generated. 
+          Each plaintext block is XOR-ed with the previous ciphertext block (CBC mode) and processed through 14 rounds of substitution (SubBytes), row shifting (ShiftRows), column mixing (MixColumns), and round key addition (AddRoundKey).
+        </p>
+      </div>
+
+      <div class="flow-arrow">↓</div>
+
+      <!-- 4. CIPHERTEXT -->
+      <div class="flow-card">
+        <div class="flow-header">
+          <span class="flow-badge encrypt-badge">Ciphertext</span>
+          <span class="flow-title">4. Stored Ciphertext (IV | Ciphertext bytes)</span>
+        </div>
+        <div class="flow-content" id="flow-cipher-val" style="color:var(--accent-purple); font-weight:700;">—</div>
+        <div class="split-block">
+          <div class="split-item">
+            <div class="split-label">Initialization Vector (IV - 16 bytes)</div>
+            <div class="split-val mono" id="flow-iv-val" style="color:var(--accent-cyan); font-family:var(--font-mono);">—</div>
+          </div>
+          <div class="split-item">
+            <div class="split-label">Ciphertext Payload</div>
+            <div class="split-val mono" id="flow-ct-payload-val" style="color:var(--accent-purple); font-family:var(--font-mono);">—</div>
+          </div>
+        </div>
+        <button class="btn-copy-sm" onclick="copyCiphertext()">📋 Copy Stored Hex</button>
+      </div>
+
+      <div class="flow-arrow">↓</div>
+
+      <!-- 5. DECRYPTION PROCESS -->
+      <div class="flow-card" style="border-style:dashed;">
+        <div class="flow-header">
+          <span class="flow-badge decrypt-badge">Decryption</span>
+          <span class="flow-title">5. AES-256 CBC Decryption Process</span>
+        </div>
+        <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:0.5rem; line-height:1.5;">
+          The public IV is extracted from the start of the stored hex string. Ciphertext blocks are decrypted block-by-block using the inverse round operations (InvSubBytes, InvShiftRows, InvMixColumns, AddRoundKey) in reverse order.
+          Each decrypted block is XOR-ed with the previous ciphertext block (or IV for the first block) to restore the plaintext bytes, and PKCS#7 padding is removed.
+        </p>
+      </div>
+
+      <div class="flow-arrow">↓</div>
+
+      <!-- 6. RECOVERED PLAINTEXT -->
+      <div class="flow-card">
+        <div class="flow-header">
+          <span class="flow-badge decrypt-badge">Recovered Plaintext</span>
+          <span class="flow-title">6. Decrypted / Recovered Plaintext Output</span>
+        </div>
+        <div class="flow-content" id="flow-recovered-val" style="color:var(--accent-green);">—</div>
+        
+        <div class="success-banner" id="match-banner">
+          <span>✅</span>
+          <span>Verification Successful: The recovered plaintext exactly matches the original input message!</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BLOCK ROUND TRACE -->
+  <div class="panel" id="trace-panel" style="display:none;">
+    <h2>🔬 Round-by-Round Block Transformations</h2>
+    <p class="panel-sub">
+      AES-256 performs 14 rounds of transformation for each 16-byte block.
+      Below is the step-by-step trace of the <strong>first 16-byte block</strong> during the encryption process, showing the 4×4 state matrix columns.
+    </p>
+    <div id="rounds-container"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function generateKey() {
+  const bytes = new Uint8Array(32);
+  window.crypto.getRandomValues(bytes);
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  document.getElementById('key').value = hex;
+}
+
+function loadExample() {
+  document.getElementById('text').value = 'Hello, AES-256! This is a manual round-trip demonstration.';
+  document.getElementById('key').value = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+}
+
+function copyCiphertext() {
+  const text = document.getElementById('flow-cipher-val').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.btn-copy-sm');
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => btn.textContent = '📋 Copy Stored Hex', 1500);
+  });
+}
+
+function renderMatrix(grid, isKey = false) {
+  if (!grid) return '';
+  let html = `<div class="aes-grid">`;
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 4; c++) {
+      html += `<div class="aes-cell ${isKey ? 'key-cell' : ''}">${grid[r][c]}</div>`;
+    }
+  }
+  html += `</div>`;
+  return html;
+}
+
+async function runAesDemo(event) {
+  event.preventDefault();
+  const text = document.getElementById('text').value.trim();
+  const key = document.getElementById('key').value.trim();
+
+  if (!text || !key) return;
+
+  try {
+    // 1. Run Encrypt
+    const encRes = await fetch('/api/aes/encrypt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, key })
+    });
+    const encData = await encRes.json();
+    if (encData.error) {
+      alert('Encryption failed: ' + encData.error);
+      return;
+    }
+
+    const ciphertext = encData.ciphertext;
+
+    // 2. Run Decrypt immediately with the generated ciphertext
+    const decRes = await fetch('/api/aes/decrypt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: ciphertext, key })
+    });
+    const decData = await decRes.json();
+    if (decData.error) {
+      alert('Decryption failed: ' + decData.error);
+      return;
+    }
+
+    const recoveredPlaintext = decData.plaintext;
+
+    // 3. Update UI
+    document.getElementById('flow-panel').style.display = 'block';
+    document.getElementById('flow-plain-val').textContent = text;
+    document.getElementById('flow-key-val').textContent = key;
+    document.getElementById('flow-cipher-val').textContent = ciphertext;
+    
+    // Split IV and Ciphertext for visual demonstration
+    const parts = ciphertext.split('|');
+    if (parts.length === 2) {
+      document.getElementById('flow-iv-val').textContent = parts[0];
+      document.getElementById('flow-ct-payload-val').textContent = parts[1];
+    } else {
+      document.getElementById('flow-iv-val').textContent = '—';
+      document.getElementById('flow-ct-payload-val').textContent = ciphertext;
+    }
+    
+    document.getElementById('flow-recovered-val').textContent = recoveredPlaintext;
+
+    // Double check verification check display
+    const banner = document.getElementById('match-banner');
+    if (text === recoveredPlaintext) {
+      banner.style.display = 'flex';
+      banner.className = 'success-banner';
+      banner.querySelector('span:first-child').textContent = '✅';
+      banner.querySelector('span:last-child').textContent = 'Verification Successful: The recovered plaintext exactly matches the original input message!';
+    } else {
+      banner.style.display = 'flex';
+      banner.className = 'success-banner';
+      banner.style.background = 'rgba(239, 68, 68, 0.1)';
+      banner.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+      banner.style.color = '#f87171';
+      banner.querySelector('span:first-child').textContent = '❌';
+      banner.querySelector('span:last-child').textContent = 'Verification Failed: The recovered plaintext does not match the input!';
+    }
+
+    // 4. Fetch and render rounds trace for the first block
+    const traceRes = await fetch('/api/aes/trace/rounds', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, key })
+    });
+    const traceData = await traceRes.json();
+
+    if (traceData.error) {
+      document.getElementById('trace-panel').style.display = 'none';
+      return;
+    }
+
+    document.getElementById('trace-panel').style.display = 'block';
+    const roundsContainer = document.getElementById('rounds-container');
+    roundsContainer.innerHTML = '';
+
+    traceData.rounds.forEach(rnd => {
+      const card = document.createElement('div');
+      card.className = 'round-card';
+
+      let inner = `
+        <div class="round-card-header">
+          <h3>${rnd.label}</h3>
+          <span class="round-badge">Round ${rnd.round_num}</span>
+        </div>
+      `;
+
+      if (rnd.round_num === 0) {
+        inner += `
+          <div class="aes-matrix-container">
+            <div class="aes-matrix-wrapper">
+              <div class="aes-matrix-title">Plaintext + IV Block</div>
+              ${renderMatrix(rnd.state_before)}
+            </div>
+            <div class="arrow-indicator">⊕</div>
+            <div class="aes-matrix-wrapper">
+              <div class="aes-matrix-title">Round Key 0</div>
+              ${renderMatrix(rnd.round_key, true)}
+            </div>
+            <div class="arrow-indicator">→</div>
+            <div class="aes-matrix-wrapper">
+              <div class="aes-matrix-title">State After AddRoundKey</div>
+              ${renderMatrix(rnd.state_after)}
+            </div>
+          </div>
+          <p class="aes-step-desc">
+            <strong>AddRoundKey:</strong> The 128-bit block is XOR-ed with the initial Round Key (Round Key 0 derived from the expanded AES key).
+          </p>
+        `;
+      } else if (rnd.round_num === 14) {
+        inner += `
+          <div class="aes-matrix-container">
+            <div class="aes-matrix-wrapper">
+              <div class="aes-matrix-title">After SubBytes</div>
+              ${renderMatrix(rnd.after_sub)}
+            </div>
+            <div class="arrow-indicator">→</div>
+            <div class="aes-matrix-wrapper">
+              <div class="aes-matrix-title">After ShiftRows</div>
+              ${renderMatrix(rnd.after_shift)}
+            </div>
+            <div class="arrow-indicator">⊕</div>
+            <div class="aes-matrix-wrapper">
+              <div class="aes-matrix-title">Round Key 14</div>
+              ${renderMatrix(rnd.round_key, true)}
+            </div>
+            <div class="arrow-indicator">→</div>
+            <div class="aes-matrix-wrapper">
+              <div class="aes-matrix-title">Ciphertext Block</div>
+              ${renderMatrix(rnd.after_rk)}
+            </div>
+          </div>
+          <p class="aes-step-desc">
+            <strong>Round 14 (Final Round):</strong> Performs SubBytes, ShiftRows, and AddRoundKey. 
+            The <em>MixColumns</em> transformation is omitted in the final round to ensure mathematical symmetry for decryption.
+          </p>
+        `;
+      } else {
+        inner += `
+          <div class="aes-matrix-container">
+            <div class="aes-matrix-wrapper">
+              <div class="aes-matrix-title">SubBytes</div>
+              ${renderMatrix(rnd.after_sub)}
+            </div>
+            <div class="arrow-indicator">→</div>
+            <div class="aes-matrix-wrapper">
+              <div class="aes-matrix-title">ShiftRows</div>
+              ${renderMatrix(rnd.after_shift)}
+            </div>
+            <div class="arrow-indicator">→</div>
+            <div class="aes-matrix-wrapper">
+              <div class="aes-matrix-title">MixColumns</div>
+              ${renderMatrix(rnd.after_mix)}
+            </div>
+            <div class="arrow-indicator">⊕</div>
+            <div class="aes-matrix-wrapper">
+              <div class="aes-matrix-title">Round Key ${rnd.round_num}</div>
+              ${renderMatrix(rnd.round_key, true)}
+            </div>
+            <div class="arrow-indicator">→</div>
+            <div class="aes-matrix-wrapper">
+              <div class="aes-matrix-title">Round Output</div>
+              ${renderMatrix(rnd.after_rk)}
+            </div>
+          </div>
+          <p class="aes-step-desc">
+            <strong>Round ${rnd.round_num}:</strong>
+            1. <em>SubBytes</em> (non-linear S-Box substitution),
+            2. <em>ShiftRows</em> (cyclic shift of row offsets),
+            3. <em>MixColumns</em> (matrix multiplication in GF(2⁸)),
+            4. <em>AddRoundKey</em> (XOR state columns with Round Key ${rnd.round_num}).
+          </p>
+        `;
+      }
+
+      card.innerHTML = inner;
+      roundsContainer.appendChild(card);
+    });
+
+  } catch (err) {
+    console.error(err);
+    alert('An unexpected error occurred during demo execution.');
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% set logged_in = true %}
+{% block title %}Protected Data Vault — CryptoApp{% endblock %}
+
+{% block content %}
+<div class="page-container">
+  <div class="page-header">
+    <h1>🗄️ Protected Data Vault</h1>
+    <p class="page-sub">Notes are <strong>AES-256 CBC encrypted before being saved</strong> — only ciphertext is stored in the database. Keys are auto-generated per note.</p>
+  </div>
+
+  <!-- ADD NOTE FORM -->
+  <div class="panel">
+    <h2>➕ Add Encrypted Note</h2>
+    <form method="POST" action="{{ url_for('main.add_protected_note') }}" class="add-note-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="label">Note Label / Title</label>
+          <input type="text" id="label" name="label" required placeholder="e.g. Bank PIN, Secret Code…" />
+        </div>
+        <div class="form-group">
+          <label>AES-256 Key</label>
+          <div class="aes-key-notice">
+            🔑 A fresh 256-bit AES key is auto-generated per note — no user input needed
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="plaintext">Secret Note Content (Plaintext)</label>
+        <textarea id="plaintext" name="plaintext" required rows="3"
+                  placeholder="Type your secret note here — it will be AES-256 encrypted before saving…"></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">🔒 AES-256 Encrypt &amp; Save to Database</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- STORED NOTES TABLE -->
+  <div class="panel">
+    <h2>📋 Database Records — AES-256 Encrypted Notes</h2>
+    {% if notes %}
+    <div class="db-proof-notice">
+      ⚠️ <strong>Database Proof:</strong> The "DB Stored Ciphertext" column shows exactly what is written to disk.
+      The plaintext is <em>never</em> stored — only reconstructed on this page using the AES-256 key.
+    </div>
+    <div class="table-wrap">
+      <table class="data-table" id="notes-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Label</th>
+            <th>🗄️ DB Stored Ciphertext</th>
+            <th>🔓 Decrypted Plaintext</th>
+            <th>Created</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for n in notes %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td><strong>{{ n.label }}</strong></td>
+            <td>
+              <div class="cipher-cell">
+                <span class="cipher-val mono">{{ n.ciphertext }}</span>
+                <button class="btn-copy" title="Copy ciphertext"
+                        onclick="copyText('{{ n.ciphertext }}', this)">📋</button>
+              </div>
+            </td>
+            <td>
+              <div class="plain-cell">
+                <span class="plain-hidden" id="plain-{{ n.id }}">{{ n.plaintext }}</span>
+                <button class="btn-reveal" onclick="toggleReveal('{{ n.id }}', this)">Show</button>
+              </div>
+            </td>
+            <td class="date-cell">{{ n.created_at.strftime('%Y-%m-%d %H:%M') if n.created_at else '—' }}</td>
+            <td>
+              <form method="POST"
+                    action="{{ url_for('main.delete_note', note_id=n.id) }}"
+                    onsubmit="return confirm('Delete this note?')">
+                <button type="submit" class="btn-danger-sm">🗑 Delete</button>
+              </form>
+            </td>
+          </tr>
+          <!-- Step-by-step row (expandable) -->
+          <tr class="steps-row" id="steps-{{ n.id }}" style="display:none;">
+            <td colspan="6">
+              <div class="steps-expand">
+                <div class="steps-cols">
+                  <div class="steps-col">
+                    <h4>🔒 Encryption Steps  (Plaintext → Ciphertext)</h4>
+                    <pre class="steps-pre" id="enc-steps-{{ n.id }}">Loading…</pre>
+                  </div>
+                  <div class="steps-col">
+                    <h4>🔓 Decryption Steps  (Ciphertext → Plaintext)</h4>
+                    <pre class="steps-pre" id="dec-steps-{{ n.id }}">Loading…</pre>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">🔐</div>
+      <p>No encrypted notes yet. Add your first one above!</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- HOW IT WORKS PANEL -->
+  <div class="panel panel-dark">
+    <h2>🔬 How the AES-256 Database Encryption Works</h2>
+    <div class="how-grid">
+      <div class="how-step">
+        <div class="how-num">1</div>
+        <div class="how-text">
+          <strong>You type plaintext</strong> into the form above
+        </div>
+      </div>
+      <div class="how-arrow">→</div>
+      <div class="how-step">
+        <div class="how-num">2</div>
+        <div class="how-text">
+          <strong><code>aes256.encrypt_cbc(text, key)</code></strong> runs in Python with a fresh random IV
+        </div>
+      </div>
+      <div class="how-arrow">→</div>
+      <div class="how-step">
+        <div class="how-num">3</div>
+        <div class="how-text">
+          <strong>AES-256 ciphertext is inserted</strong> into the <code>protected_note</code> table
+        </div>
+      </div>
+      <div class="how-arrow">→</div>
+      <div class="how-step">
+        <div class="how-num">4</div>
+        <div class="how-text">
+          On page load, <strong><code>aes256.decrypt_cbc(ct, key)</code></strong> reconstructs plaintext for display
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* Toggle reveal of plaintext in table */
+function toggleReveal(id, btn) {
+  const el = document.getElementById('plain-' + id);
+  if (el.classList.contains('revealed')) {
+    el.classList.remove('revealed');
+    btn.textContent = 'Show';
+  } else {
+    el.classList.add('revealed');
+    btn.textContent = 'Hide';
+  }
+}
+
+/* Copy ciphertext to clipboard */
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✅';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+/* AES-256 keys are auto-generated server-side per note — no client-side preview needed */
+</script>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% set logged_in = false %}
+{% block title %}Sign Up — CryptoApp{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-icon">✨</div>
+      <h1>Create Account</h1>
+      <p>Your email will be encrypted with AES-256 before storage</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('auth.signup') }}" class="auth-form" id="signup-form">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required
+               placeholder="Choose a username" autocomplete="username" />
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" name="email" required
+               placeholder="you@gmail.com or you@bmsce.ac.in" autocomplete="email" />
+        <span class="form-hint">Only gmail.com and bmsce.ac.in addresses accepted</span>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="input-wrapper">
+          <input type="password" id="password" name="password" required
+                 placeholder="Min 8 chars, uppercase, number, special"
+                 oninput="checkStrength(this.value)" autocomplete="new-password" />
+          <button type="button" class="toggle-pw" onclick="togglePassword('password', this)">👁</button>
+        </div>
+        <div class="strength-bar-wrap">
+          <div class="strength-bar" id="strength-bar"></div>
+        </div>
+        <span class="strength-label" id="strength-label"></span>
+      </div>
+
+      <div class="encryption-notice">
+        <div class="notice-icon">🔒</div>
+        <div>
+          <strong>AES-256 Encryption Applied</strong>
+          <p>Your email will be encrypted using our manually implemented AES-256 cipher in CBC mode with a randomly generated key before being saved to the database.</p>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full">Create Account</button>
+    </form>
+
+    <div class="auth-footer">
+      <p>Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function checkStrength(pw) {
+  const bar   = document.getElementById('strength-bar');
+  const label = document.getElementById('strength-label');
+  let score = 0;
+  if (pw.length >= 8)              score++;
+  if (/[A-Z]/.test(pw))           score++;
+  if (/[a-z]/.test(pw))           score++;
+  if (/\d/.test(pw))              score++;
+  if (/[\W_]/.test(pw))           score++;
+  const pct = (score / 5) * 100;
+  bar.style.width = pct + '%';
+  bar.className = 'strength-bar';
+  if (score <= 2)      { bar.classList.add('weak');   label.textContent = 'Weak';   label.style.color='#ef4444'; }
+  else if (score <= 3) { bar.classList.add('medium'); label.textContent = 'Medium'; label.style.color='#f59e0b'; }
+  else                 { bar.classList.add('strong'); label.textContent = 'Strong'; label.style.color='#10b981'; }
+}
+</script>
+{% endblock %}

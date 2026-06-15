@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}CryptoApp{% endblock %}</title>
+  <meta name="description" content="CRP Academic Project — Cryptography Web Application demonstrating AES-256 CBC data encryption." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+  <!-- ===== NAVBAR ===== -->
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="{{ url_for('main.index') }}" class="nav-brand">
+        <span class="nav-icon">🔐</span>
+        <span>CryptoApp</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="{{ url_for('main.index') }}" class="nav-link">Home</a></li>
+        <li><a href="{{ url_for('main.aes_demo') }}" class="nav-link">AES&nbsp;Demo</a></li>
+        <li><a href="{{ url_for('main.aes_internals') }}" class="nav-link">AES&nbsp;Internals</a></li>
+        {% if logged_in is defined and logged_in %}
+          <li><a href="{{ url_for('main.protected_data') }}" class="nav-link">Protected&nbsp;Data</a></li>
+          <li><a href="{{ url_for('auth.logout') }}" class="nav-link nav-btn-outline">Logout</a></li>
+        {% else %}
+          <li><a href="{{ url_for('auth.login') }}" class="nav-link">Login</a></li>
+          <li><a href="{{ url_for('auth.signup') }}" class="nav-link nav-btn">Sign&nbsp;Up</a></li>
+        {% endif %}
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ===== FLASH MESSAGES ===== -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">
+            <span>{{ message }}</span>
+            <button class="flash-close" onclick="this.parentElement.remove()">×</button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <p>CRP Academic Project &mdash; AES-256 CBC Implementation</p>
+      <p class="footer-sub">Cryptography engine: <code>aes256.py</code> &mdash; no external crypto libraries</p>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
